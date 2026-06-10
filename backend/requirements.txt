@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.6
+httpx>=0.27
+# 真實整合（可選，預設用 stub，不安裝也能跑測試）：
+# openai>=1.40        # Codex / OpenAI SDK
+# shioaji>=1.2        # 永豐金證券 API
+
+# 開發：
+pytest>=8.0
