@@ -35,3 +35,21 @@ export function runBacktest(payload: {
     body: JSON.stringify(payload),
   }).then((r) => json<BacktestResult>(r));
 }
+
+export function listStoredSymbols(): Promise<string[]> {
+  return fetch(`${BASE}/backtest/symbols`).then((r) => json<string[]>(r));
+}
+
+export function runStoredBacktest(payload: {
+  symbols?: string[];
+  days?: number;
+  initial_cash?: number;
+  strategy_style?: string;
+  etf_symbols?: string[];
+}): Promise<BacktestResult> {
+  return fetch(`${BASE}/backtest/run-stored`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then((r) => json<BacktestResult>(r));
+}

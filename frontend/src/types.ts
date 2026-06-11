@@ -16,6 +16,16 @@ export interface StoredProposal {
   created_at: string;
 }
 
+export interface BacktestTrade {
+  decision_date: string;
+  fill_date: string;
+  symbol: string;
+  side: "buy" | "sell";
+  price: number;
+  quantity: number;
+  reason: string;
+}
+
 export interface BacktestResult {
   total_return: number;
   win_rate: number;
@@ -23,4 +33,5 @@ export interface BacktestResult {
   n_trades: number;
   final_equity: number;
   equity_curve: { date: string; equity: number }[];
+  trades: BacktestTrade[];
 }

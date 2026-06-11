@@ -29,6 +29,7 @@ class BacktestConfig:
 @dataclass
 class BacktestResult:
     equity_curve: List[dict] = field(default_factory=list)   # [{date, equity}]
+    trades: List[dict] = field(default_factory=list)         # 逐筆成交事件（除錯用）
     total_return: float = 0.0
     win_rate: float = 0.0
     expectancy: float = 0.0              # 每筆已實現交易的平均損益
@@ -51,6 +52,7 @@ def run_backtest(
     cash = config.initial_cash
     positions: Dict[str, int] = {}
     fills: List[Fill] = []
+    trades: List[dict] = []
     equity_curve: List[dict] = []
 
     for i in range(len(window) - 1):
@@ -106,6 +108,16 @@ def run_backtest(
             positions[proposal.symbol] = positions.get(proposal.symbol, 0) + (
                 proposal.quantity if side == "buy" else -proposal.quantity
             )
+            # 成交事件：除錯圖用 — 決策日、成交日、隔日開盤價、提案理由
+            trades.append({
+                "decision_date": decision_date,
+                "fill_date": next_date,
+                "symbol": proposal.symbol,
+                "side": side,
+                "price": fill_price,
+                "quantity": proposal.quantity,
+                "reason": proposal.reason,
+            })
 
         mark = _closes_on(candles_by_symbol, next_date)
         equity_curve.append({"date": next_date, "equity": _equity(cash, positions, mark)})
@@ -116,6 +128,7 @@ def run_backtest(
 
     return BacktestResult(
         equity_curve=equity_curve,
+        trades=trades,
         total_return=(final_equity - config.initial_cash) / config.initial_cash,
         win_rate=(len(wins) / len(report.realized)) if report.realized else 0.0,
         expectancy=(report.realized_pnl / len(report.realized)) if report.realized else 0.0,

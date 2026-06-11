@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { decideProposal, listProposals } from "./api";
+import BacktestPanel from "./BacktestPanel";
 import type { StoredProposal } from "./types";
 
+type Tab = "proposals" | "backtest";
+
 export default function App() {
+  const [tab, setTab] = useState<Tab>("proposals");
   const [proposals, setProposals] = useState<StoredProposal[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +37,21 @@ export default function App() {
         </p>
       </header>
 
+      <nav style={{ display: "flex", gap: 8, margin: "16px 0" }}>
+        {(["proposals", "backtest"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{ fontWeight: tab === t ? 700 : 400 }}
+          >
+            {t === "proposals" ? "提案裁決" : "回測除錯"}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "backtest" && <BacktestPanel />}
+      {tab === "backtest" ? null : (
+        <>
       {error && <p style={{ color: "crimson" }}>讀取失敗：{error}</p>}
 
       <h2>待裁決提案</h2>
@@ -65,6 +84,8 @@ export default function App() {
           </article>
         ))}
       </div>
+        </>
+      )}
     </main>
   );
 }
