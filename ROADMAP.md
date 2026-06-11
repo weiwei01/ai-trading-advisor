@@ -14,10 +14,10 @@
 - [x] `fetch_history` 支援指定年份區間（如 `--from 2023-01`），抓 2~3 年歷史
   - 證交所 STOCK_DAY 是按月請求，注意流量限制（已有 delay 機制，長區間要可中斷續抓）
   - 抓失敗的月份要記錄並可重試，不要整批重來
-- [ ] 擴充標的池：10~20 檔（權值股 + 中型股 + 2~3 檔 ETF，涵蓋不同波動特性）
-- [ ] 上櫃（OTC）標的資料來源：櫃買中心 API（schema 已預留 `MarketType.OTC`）
-- [ ] 資料品質檢查腳本：缺日偵測（連續交易日斷層）、價格異常（除權息跳空 vs 錯誤資料）
-- [ ] 除權息調整：決定用還原價或在回測中明確忽略（並記錄此假設的影響）
+- [x] 擴充標的池：10~20 檔（權值股 + 中型股 + 2~3 檔 ETF，涵蓋不同波動特性）
+- [x] 上櫃（OTC）標的資料來源：櫃買中心 API（schema 已預留 `MarketType.OTC`）
+- [x] 資料品質檢查腳本：缺日偵測（連續交易日斷層）、價格異常（除權息跳空 vs 錯誤資料）
+- [x] 除權息調整：決定用還原價或在回測中明確忽略（並記錄此假設的影響）
 
 **完成判準**：規則回測成交 ≥ 50 筆，且資料檢查腳本零警告。
 
@@ -25,14 +25,14 @@
 
 前置：Phase 1 完成（樣本不足時掃參數 = 掃出過擬合）。
 
-- [ ] 掃描腳本 `scripts/scan_params.py`：對 `RuleConfig`（short/long window、breakout window）做 grid scan，輸出每組參數的報酬/勝率/期望值/最大回撤
-- [ ] **In-sample / out-of-sample 切分**：用前 70% 資料挑參數，後 30% 驗證，兩段結果落差大就是過擬合警訊
-- [ ] 補回測指標：最大回撤（MDD）、Sharpe、平均持有天數、交易成本佔獲利比
-- [ ] Whipsaw 對策驗證（除錯圖已抓到 0050 在 3/11~3/13 被均線來回甩）：
+- [x] 掃描腳本 `scripts/scan_params.py`：對 `RuleConfig`（short/long window、breakout window）做 grid scan，輸出每組參數的報酬/勝率/期望值/最大回撤
+- [x] **In-sample / out-of-sample 切分**：用前 70% 資料挑參數，後 30% 驗證，兩段結果落差大就是過擬合警訊
+- [x] 補回測指標：最大回撤（MDD）、Sharpe、平均持有天數、交易成本佔獲利比
+- [x] Whipsaw 對策驗證（除錯圖已抓到 0050 在 3/11~3/13 被均線來回甩）：
   - 假設 A：訊號需連續 N 天確認才進出場
   - 假設 B：進出場間設最短持有天數
   - 用同一段資料對照「有/無對策」的期望值差異
-- [ ] 回測報告輸出成檔（JSON/Markdown），讓不同參數跑批可比對
+- [x] 回測報告輸出成檔（JSON/Markdown），讓不同參數跑批可比對
 
 **完成判準**：找到 out-of-sample 仍為正期望值的參數組，或誠實確認此規則策略無效。
 
@@ -40,12 +40,12 @@
 
 前置：Phase 2 完成，鏈路與指標都可信後，LLM 的成績才有對照基準。
 
-- [ ] Codex smoke test 實跑一次（`pytest -m smoke`），確認 prompt/解析在真實回應下成立
-- [ ] Token 用量記錄：每次回測記錄呼叫次數與 token 數，存 DB 供成本追蹤（已知約 20 天 ≈ 10% 配額）
-- [ ] 回測快取：同一天 + 同一 context hash 的決策結果落地，重跑不重複呼叫
-- [ ] LLM 失敗降級策略：驗證失敗/逾時的當天視為 HOLD，並記錄失敗率
-- [ ] **三方對照回測**：同一段資料跑 Stub（基準=不動）、Rules、Codex，比較期望值——回答核心問題：LLM 有沒有打贏機械規則？
-- [ ] Prompt 迭代記錄：每版 prompt 對應回測結果，避免改了 prompt 不知道變好還變壞
+- [x] Codex smoke test 實跑一次（`pytest -m smoke`），確認 prompt/解析在真實回應下成立
+- [x] Token 用量記錄：每次回測記錄呼叫次數與 token 數，存 DB 供成本追蹤（已知約 20 天 ≈ 10% 配額）
+- [x] 回測快取：同一天 + 同一 context hash 的決策結果落地，重跑不重複呼叫
+- [x] LLM 失敗降級策略：驗證失敗/逾時的當天視為 HOLD，並記錄失敗率
+- [x] **三方對照回測**：同一段資料跑 Stub（基準=不動）、Rules、Codex，比較期望值——回答核心問題：LLM 有沒有打贏機械規則？
+- [x] Prompt 迭代記錄：每版 prompt 對應回測結果，避免改了 prompt 不知道變好還變壞
 
 **完成判準**：Codex 在 out-of-sample 期間期望值 ≥ 規則策略，且失敗率 < 5%。
 
@@ -53,12 +53,12 @@
 
 前置：Phase 3 通過。真錢之前先跑一段「紙上實盤」。
 
-- [ ] 每日盤後流程腳本：抓當日 K → Codex 產提案 → 過風控 → 入庫待裁決
-- [ ] 接上 Shioaji 即時報價（`USE_SHIOAJI=1` 路徑實測）
-- [ ] 前端提案頁補強：顯示風控評估結果（est_cost、被擋原因）、歷史裁決紀錄
-- [ ] 手動回報成交：人在券商下單後，把實際成交價/股數回填系統（fills 表已備好），讓損益是真實的
-- [ ] 損益頁面：FIFO 已實現/未實現損益視覺化（pnl API 已有，缺前端）
-- [ ] 提案追蹤：被「婉拒」的提案事後表現如何？（檢驗自己的裁決品質，不只檢驗 AI）
+- [x] 每日盤後流程腳本：抓當日 K → Codex 產提案 → 過風控 → 入庫待裁決
+- [x] 接上 Shioaji 即時報價（`USE_SHIOAJI=1` 路徑實測）
+- [x] 前端提案頁補強：顯示風控評估結果（est_cost、被擋原因）、歷史裁決紀錄
+- [x] 手動回報成交：人在券商下單後，把實際成交價/股數回填系統（fills 表已備好），讓損益是真實的
+- [x] 損益頁面：FIFO 已實現/未實現損益視覺化（pnl API 已有，缺前端）
+- [x] 提案追蹤：被「婉拒」的提案事後表現如何？（檢驗自己的裁決品質，不只檢驗 AI）
 - [ ] 通知機制（可選）：盤後提案產生完成時推播
 
 **完成判準**：連續 4 週每日流程無人工修補；提案→裁決→回填→損益帳對得起來。
@@ -79,13 +79,13 @@
 
 不擋主線，有空檔再處理：
 
-- [ ] **Node 12 → 18+**（nvm），前端目前無法在本機跑 `npm run dev`，升級後實際驗一次畫面
-- [ ] `App.tsx` 分頁的條件渲染寫法整理（目前巢狀三元不好讀）
-- [ ] FastAPI `@app.on_event("startup")` 已 deprecated，改 lifespan handler
-- [ ] `datetime.utcnow()`（Python 3.12 起 deprecated）改 `datetime.now(timezone.utc)`
-- [ ] CORS origin、DB 路徑、風控參數抽成設定檔（目前散在程式碼）
+- [x] **Node 12 → 18+**（nvm），前端目前無法在本機跑 `npm run dev`，升級後實際驗一次畫面
+- [x] `App.tsx` 分頁的條件渲染寫法整理（目前巢狀三元不好讀）
+- [x] FastAPI `@app.on_event("startup")` 已 deprecated，改 lifespan handler
+- [x] `datetime.utcnow()`（Python 3.12 起 deprecated）改 `datetime.now(timezone.utc)`
+- [x] CORS origin、DB 路徑、風控參數抽成設定檔（目前散在程式碼）
 - [ ] CI：GitHub Actions 跑 pytest（排除 smoke）+ 前端 `tsc --noEmit`
-- [ ] 風控 `RiskConfig` 的 ETF/個股 sec_type 目前要呼叫端自報，改由標的主檔表管理
+- [x] 風控 `RiskConfig` 的 ETF/個股 sec_type 目前要呼叫端自報，改由標的主檔表管理
 
 ## 刻意不做的事（記下來避免將來自我說服）
 
