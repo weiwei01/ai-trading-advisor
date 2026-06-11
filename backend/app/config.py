@@ -6,10 +6,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = BASE_DIR / "data" / "app.db"
 DB_PATH = os.getenv("DB_PATH", str(DEFAULT_DB_PATH))
 
-# CORS Settings
+# CORS Settings — 前端開發伺服器預設 1688（見 scripts/dev.sh）
 CORS_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    for origin in os.getenv(
+        "CORS_ORIGINS", "http://localhost:1688,http://localhost:5173"
+    ).split(",")
     if origin.strip()
 ]
 
