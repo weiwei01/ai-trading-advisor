@@ -27,6 +27,10 @@ def get_advisor() -> TradingAdvisor:
         from app.advisor.codex import CodexAdvisor
 
         return CodexAdvisor()
+    if os.getenv("USE_RULES") == "1":
+        from app.advisor.rules import RuleBasedAdvisor
+
+        return RuleBasedAdvisor()
     return StubAdvisor()
 
 

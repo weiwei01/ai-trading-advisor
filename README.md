@@ -35,8 +35,9 @@ pytest -m smoke                     # 真正呼叫 Codex 的冒煙測試（需 O
 # 1) 從證交所抓最近 3 個月日 K，存入本地 SQLite（回測本身不需再連網）
 python -m scripts.fetch_history 2330 0050 --months 3
 
-# 2) 對已存資料跑回測（預設 StubAdvisor，不燒 Token）
-python -m scripts.run_backtest 2330 0050 --days 20 --style 穩健波段 --etf 0050
+# 2) 對已存資料跑回測。用規則型 advisor 可不燒 Token 就跑出有成交的結果，
+#    先驗證 決策→風控→損益 整條鏈路正確，再換 Codex。
+USE_RULES=1 python -m scripts.run_backtest 2330 0050 --days 90 --style 均線+突破 --etf 0050
 
 # 要用真實 Codex 決策（逐日呼叫 LLM，較燒 Token）：
 USE_CODEX=1 OPENAI_API_KEY=sk-... python -m scripts.run_backtest 2330 --days 20
@@ -46,6 +47,7 @@ USE_CODEX=1 OPENAI_API_KEY=sk-... python -m scripts.run_backtest 2330 --days 20
 
 | 環境變數 | 作用 |
 |---|---|
+| `USE_RULES=1` | 改用規則型 advisor（均線交叉 + 突破，不燒 Token，用來驗證鏈路） |
 | `USE_CODEX=1` + `OPENAI_API_KEY` | 改用真實 Codex 決策 |
 | `USE_SHIOAJI=1` + `SHIOAJI_API_KEY` / `SHIOAJI_SECRET_KEY` | 改用永豐即時報價 |
 
