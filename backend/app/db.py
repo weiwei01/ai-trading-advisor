@@ -24,6 +24,17 @@ CREATE TABLE IF NOT EXISTS proposals (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS candles (
+    symbol TEXT NOT NULL,
+    date TEXT NOT NULL,
+    open REAL NOT NULL,
+    high REAL NOT NULL,
+    low REAL NOT NULL,
+    close REAL NOT NULL,
+    volume REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (symbol, date)
+);
+
 CREATE TABLE IF NOT EXISTS fills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,

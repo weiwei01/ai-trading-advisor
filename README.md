@@ -29,6 +29,19 @@ pytest                              # 跑單元 + 流程測試（不含 smoke）
 pytest -m smoke                     # 真正呼叫 Codex 的冒煙測試（需 OPENAI_API_KEY，會燒 Token）
 ```
 
+### 抓真實日 K 並回測
+
+```bash
+# 1) 從證交所抓最近 3 個月日 K，存入本地 SQLite（回測本身不需再連網）
+python -m scripts.fetch_history 2330 0050 --months 3
+
+# 2) 對已存資料跑回測（預設 StubAdvisor，不燒 Token）
+python -m scripts.run_backtest 2330 0050 --days 20 --style 穩健波段 --etf 0050
+
+# 要用真實 Codex 決策（逐日呼叫 LLM，較燒 Token）：
+USE_CODEX=1 OPENAI_API_KEY=sk-... python -m scripts.run_backtest 2330 --days 20
+```
+
 預設用 stub advisor 與 stub 報價，不需任何金鑰即可跑。切到真實整合：
 
 | 環境變數 | 作用 |

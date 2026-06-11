@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+import time
+from datetime import date
 from typing import List
 
 import httpx
@@ -24,6 +26,37 @@ def fetch_daily_candles(symbol: str, yyyymm: str) -> List[dict]:
     if payload.get("stat") != "OK":
         return []
     return [_parse_row(r) for r in payload.get("data", [])]
+
+
+def fetch_history(symbol: str, months: int = 3, delay: float = 1.0) -> List[dict]:
+    """抓取最近 N 個月的日 K，合併去重並依日期排序（最舊到最新）。
+
+    證交所 API 有流量限制，每次請求間預設停 1 秒。
+    """
+    seen: set[str] = set()
+    out: List[dict] = []
+    for yyyymm in _recent_months(months):
+        for c in fetch_daily_candles(symbol, yyyymm):
+            if c["date"] not in seen:
+                seen.add(c["date"])
+                out.append(c)
+        time.sleep(delay)
+    out.sort(key=lambda c: c["date"])
+    return out
+
+
+def _recent_months(n: int) -> List[str]:
+    """回傳最近 n 個月每月第一天的 YYYYMM01 字串（最舊到最新）。"""
+    today = date.today()
+    months: List[str] = []
+    y, m = today.year, today.month
+    for _ in range(n):
+        months.append(f"{y:04d}{m:02d}01")
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+    return list(reversed(months))
 
 
 def _parse_row(row: List[str]) -> dict:
