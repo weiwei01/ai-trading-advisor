@@ -18,6 +18,20 @@ if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
   exit 1
 fi
 
+# 啟動前先釋放埠號，避免殘留進程占用導致 vite 跳埠或後端起不來
+free_port() {
+  local port="$1"
+  local pids
+  pids="$(lsof -t -i ":$port" 2>/dev/null || true)"
+  if [ -n "$pids" ]; then
+    echo "釋放埠 $port（kill -9 $pids）"
+    kill -9 $pids 2>/dev/null || true
+  fi
+}
+
+free_port "$FRONTEND_PORT"
+free_port "$BACKEND_PORT"
+
 run_backend() {
   (
     cd "$BACKEND_DIR" && source .venv/bin/activate && \
