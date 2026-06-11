@@ -12,7 +12,8 @@ from pydantic import BaseModel
 
 from app import repository
 from app.advisor.base import MarketContext, TradingAdvisor
-from app.deps import get_advisor, get_db
+from app.deps import get_advisor, get_db, get_quote_source
+from app.market.shioaji import QuoteSource
 from app.risk import RiskConfig, RiskEngine
 from app.schemas import ProposalDecision, StoredProposal
 
