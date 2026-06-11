@@ -31,6 +31,10 @@ class BacktestResponse(BaseModel):
     final_equity: float
     equity_curve: List[dict]
     trades: List[dict]
+    max_drawdown: float
+    sharpe_ratio: float
+    avg_holding_days: float
+    tx_cost_ratio: float
 
 
 def _to_response(result: BacktestResult) -> BacktestResponse:
@@ -42,6 +46,10 @@ def _to_response(result: BacktestResult) -> BacktestResponse:
         final_equity=result.final_equity,
         equity_curve=result.equity_curve,
         trades=result.trades,
+        max_drawdown=result.max_drawdown,
+        sharpe_ratio=result.sharpe_ratio,
+        avg_holding_days=result.avg_holding_days,
+        tx_cost_ratio=result.tx_cost_ratio,
     )
 
 

@@ -57,7 +57,8 @@ def get_stored_pnl(
     from app.repository import list_fills
     from app.market import repository as market_repo
     
-    db_fills = list_fills(conn)
+    # list_fills 為顯示用的新→舊排序；FIFO 需要舊→新（時間正序），故反轉
+    db_fills = list(reversed(list_fills(conn)))
     domain_fills = [
         Fill(
             symbol=f["symbol"],
