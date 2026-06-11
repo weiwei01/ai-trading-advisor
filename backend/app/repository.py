@@ -59,3 +59,112 @@ def _row_to_proposal(r: sqlite3.Row) -> StoredProposal:
         decision=ProposalDecision(r["decision"]),
         created_at=r["created_at"],
     )
+
+
+# --- Fills (Manual Trades) ---
+
+def save_fill(
+    conn: sqlite3.Connection,
+    symbol: str,
+    side: str,
+    price: float,
+    quantity: int,
+    sec_type: str = "stock",
+    proposal_id: Optional[int] = None,
+) -> int:
+    cur = conn.execute(
+        """INSERT INTO fills (symbol, side, price, quantity, sec_type, proposal_id)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (symbol, side, price, quantity, sec_type, proposal_id),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def list_fills(conn: sqlite3.Connection) -> List[dict]:
+    cur = conn.execute("SELECT * FROM fills ORDER BY created_at DESC, id DESC")
+    return [dict(r) for r in cur.fetchall()]
+
+
+# --- Security Metadata ---
+
+def get_security_metadata(conn: sqlite3.Connection, symbol: str) -> Optional[dict]:
+    cur = conn.execute("SELECT * FROM security_metadata WHERE symbol = ?", (symbol,))
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def list_securities(conn: sqlite3.Connection) -> List[dict]:
+    cur = conn.execute("SELECT * FROM security_metadata ORDER BY symbol")
+    return [dict(r) for r in cur.fetchall()]
+
+
+def save_security(
+    conn: sqlite3.Connection,
+    symbol: str,
+    name: str,
+    market_type: str,
+    sec_type: str,
+) -> None:
+    conn.execute(
+        """INSERT OR REPLACE INTO security_metadata (symbol, name, market_type, sec_type)
+           VALUES (?, ?, ?, ?)""",
+        (symbol, name, market_type, sec_type),
+    )
+    conn.commit()
+
+
+# --- Token Usage Tracking ---
+
+def log_token_usage(
+    conn: sqlite3.Connection,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+) -> None:
+    conn.execute(
+        """INSERT INTO token_usage (model, prompt_tokens, completion_tokens)
+           VALUES (?, ?, ?)""",
+        (model, prompt_tokens, completion_tokens),
+    )
+    conn.commit()
+
+
+def get_total_token_usage(conn: sqlite3.Connection) -> dict:
+    cur = conn.execute(
+        """SELECT
+             COUNT(*) as total_calls,
+             SUM(prompt_tokens) as total_prompt_tokens,
+             SUM(completion_tokens) as total_completion_tokens
+           FROM token_usage"""
+    )
+    row = cur.fetchone()
+    return {
+        "calls": row["total_calls"] or 0,
+        "prompt_tokens": row["total_prompt_tokens"] or 0,
+        "completion_tokens": row["total_completion_tokens"] or 0,
+    }
+
+
+# --- Backtest Caching ---
+
+def get_backtest_cache(conn: sqlite3.Connection, context_hash: str) -> Optional[str]:
+    cur = conn.execute("SELECT response_json FROM backtest_cache WHERE context_hash = ?", (context_hash,))
+    row = cur.fetchone()
+    return row["response_json"] if row else None
+
+
+def save_backtest_cache(conn: sqlite3.Connection, context_hash: str, response_json: str) -> None:
+    conn.execute(
+        """INSERT OR REPLACE INTO backtest_cache (context_hash, response_json)
+           VALUES (?, ?)""",
+        (context_hash, response_json),
+    )
+    conn.commit()
+
+
+# --- Rejected Proposal Tracking ---
+
+def list_rejected_proposals(conn: sqlite3.Connection) -> List[StoredProposal]:
+    return list_proposals(conn, ProposalDecision.REJECTED)
+

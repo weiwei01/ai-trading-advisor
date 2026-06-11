@@ -5,21 +5,35 @@
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import config
 from app.db import get_connection, init_db
 from app.routers import backtest, portfolio, proposals
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize DB tables and metadata seed
+    conn = get_connection()
+    init_db(conn)
+    conn.close()
+    yield
+    # Shutdown: clean up if needed
+
 
 app = FastAPI(
     title="AI Trading Advisor",
     description="台股 AI 決策輔助系統（非自動化交易，下單由人類負責）",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=config.CORS_ORIGINS or ["http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -27,13 +41,6 @@ app.add_middleware(
 app.include_router(proposals.router)
 app.include_router(portfolio.router)
 app.include_router(backtest.router)
-
-
-@app.on_event("startup")
-def _startup() -> None:
-    conn = get_connection()
-    init_db(conn)
-    conn.close()
 
 
 @app.get("/health")

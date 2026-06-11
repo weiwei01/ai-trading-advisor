@@ -40,3 +40,45 @@ def load_many(conn: sqlite3.Connection, symbols: List[str]) -> Dict[str, List[di
 def stored_symbols(conn: sqlite3.Connection) -> List[str]:
     cur = conn.execute("SELECT DISTINCT symbol FROM candles ORDER BY symbol")
     return [r["symbol"] for r in cur.fetchall()]
+
+
+def has_month_data(conn: sqlite3.Connection, symbol: str, yyyymm: str) -> bool:
+    """檢查某 symbol 某月份是否已有任何日 K，可供長區間抓取續跑時跳過。"""
+    month_prefix = f"{yyyymm[:4]}-{yyyymm[4:6]}-"
+    cur = conn.execute(
+        "SELECT 1 FROM candles WHERE symbol = ? AND date LIKE ? LIMIT 1",
+        (symbol, f"{month_prefix}%"),
+    )
+    return cur.fetchone() is not None
+
+
+def record_fetch_failure(
+    conn: sqlite3.Connection, symbol: str, yyyymm: str, error: str
+) -> None:
+    conn.execute(
+        """INSERT INTO candle_fetch_failures (symbol, yyyymm, error)
+           VALUES (?,?,?)
+           ON CONFLICT(symbol, yyyymm) DO UPDATE SET
+             error=excluded.error, failed_at=datetime('now')""",
+        (symbol, yyyymm, error[:500]),
+    )
+    conn.commit()
+
+
+def clear_fetch_failure(conn: sqlite3.Connection, symbol: str, yyyymm: str) -> None:
+    conn.execute(
+        "DELETE FROM candle_fetch_failures WHERE symbol = ? AND yyyymm = ?",
+        (symbol, yyyymm),
+    )
+    conn.commit()
+
+
+def list_fetch_failures(conn: sqlite3.Connection, symbols: List[str] | None = None) -> List[dict]:
+    sql = "SELECT symbol, yyyymm, error, failed_at FROM candle_fetch_failures"
+    params: tuple = ()
+    if symbols:
+        placeholders = ",".join("?" for _ in symbols)
+        sql += f" WHERE symbol IN ({placeholders})"
+        params = tuple(symbols)
+    sql += " ORDER BY symbol, yyyymm"
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]

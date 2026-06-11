@@ -6,7 +6,7 @@ AI 回傳的提案必須通過這裡的嚴格驗證才會進入後續流程：
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
@@ -59,7 +59,7 @@ class ProposalBatch(BaseModel):
     """一次決策可能對多檔標的提案。"""
 
     proposals: List[Proposal] = Field(default_factory=list)
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     model_note: str = ""
 
 

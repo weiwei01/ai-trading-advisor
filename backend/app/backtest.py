@@ -17,6 +17,9 @@ from app.risk import RiskConfig, RiskEngine
 from app.schemas import Action, SecurityType
 
 
+from datetime import datetime
+from app.pnl import brokerage_fee, transaction_tax
+
 @dataclass
 class BacktestConfig:
     initial_cash: float = 1_000_000
@@ -35,6 +38,10 @@ class BacktestResult:
     expectancy: float = 0.0              # 每筆已實現交易的平均損益
     n_trades: int = 0
     final_equity: float = 0.0
+    max_drawdown: float = 0.0
+    sharpe_ratio: float = 0.0
+    avg_holding_days: float = 0.0
+    tx_cost_ratio: float = 0.0           # 交易成本佔獲利比
 
 
 def run_backtest(
@@ -54,6 +61,11 @@ def run_backtest(
     fills: List[Fill] = []
     trades: List[dict] = []
     equity_curve: List[dict] = []
+
+    # 初始權益（第 0 天）
+    first_date = window[0]
+    initial_mark = _closes_on(candles_by_symbol, first_date)
+    equity_curve.append({"date": first_date, "equity": _equity(cash, positions, initial_mark)})
 
     for i in range(len(window) - 1):
         decision_date = window[i]
@@ -101,6 +113,7 @@ def run_backtest(
                     price=fill_price,
                     quantity=proposal.quantity,
                     sec_type=sec_type,
+                    date=next_date,
                 )
             )
             # est_cost: 買為正、賣為負；現金反向變動
@@ -126,6 +139,57 @@ def run_backtest(
     final_equity = equity_curve[-1]["equity"] if equity_curve else config.initial_cash
     wins = [t for t in report.realized if t.pnl > 0]
 
+    # 1. Max Drawdown (MDD)
+    peak = -float("inf")
+    max_dd = 0.0
+    for ep in equity_curve:
+        eq = ep["equity"]
+        if eq > peak:
+            peak = eq
+        dd = (peak - eq) / peak if peak > 0 else 0.0
+        if dd > max_dd:
+            max_dd = dd
+
+    # 2. Sharpe Ratio
+    sharpe = 0.0
+    if len(equity_curve) >= 2:
+        returns = []
+        for i in range(1, len(equity_curve)):
+            prev_eq = equity_curve[i - 1]["equity"]
+            curr_eq = equity_curve[i]["equity"]
+            returns.append((curr_eq - prev_eq) / prev_eq if prev_eq > 0 else 0.0)
+        
+        n = len(returns)
+        if n > 0:
+            mean_ret = sum(returns) / n
+            variance = sum((r - mean_ret) ** 2 for r in returns) / n
+            std_ret = variance ** 0.5
+            if std_ret > 0:
+                sharpe = (mean_ret / std_ret) * (252 ** 0.5)
+
+    # 3. Average Holding Days
+    def _days_between(d1_str: str, d2_str: str) -> float:
+        try:
+            t1 = datetime.strptime(d1_str, "%Y-%m-%d")
+            t2 = datetime.strptime(d2_str, "%Y-%m-%d")
+            return float((t2 - t1).days)
+        except Exception:
+            return 0.0
+
+    holding_days = [_days_between(t.buy_date, t.sell_date) for t in report.realized if t.buy_date and t.sell_date]
+    avg_holding = sum(holding_days) / len(holding_days) if holding_days else 0.0
+
+    # 4. Transaction Cost Ratio
+    total_tx_costs = 0.0
+    for f in fills:
+        gross = f.price * f.quantity
+        total_tx_costs += brokerage_fee(gross)
+        if f.side == "sell":
+            total_tx_costs += transaction_tax(gross, f.sec_type)
+    
+    realized_gains = sum(t.pnl for t in report.realized if t.pnl > 0)
+    tx_ratio = total_tx_costs / realized_gains if realized_gains > 0 else 0.0
+
     return BacktestResult(
         equity_curve=equity_curve,
         trades=trades,
@@ -134,6 +198,10 @@ def run_backtest(
         expectancy=(report.realized_pnl / len(report.realized)) if report.realized else 0.0,
         n_trades=len(report.realized),
         final_equity=final_equity,
+        max_drawdown=max_dd,
+        sharpe_ratio=sharpe,
+        avg_holding_days=avg_holding,
+        tx_cost_ratio=tx_ratio,
     )
 
 

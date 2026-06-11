@@ -59,8 +59,12 @@ export default function BacktestPanel() {
             <Stat label="總報酬" value={`${(result.total_return * 100).toFixed(2)}%`} />
             <Stat label="成交筆數" value={String(result.n_trades)} />
             <Stat label="勝率" value={`${(result.win_rate * 100).toFixed(1)}%`} />
-            <Stat label="期望值/筆" value={result.expectancy.toFixed(0)} />
+            <Stat label="期望值/筆" value={result.expectancy.toLocaleString(undefined, { maximumFractionDigits: 0 })} />
             <Stat label="期末權益" value={result.final_equity.toLocaleString()} />
+            <Stat label="最大回撤 (MDD)" value={`${(result.max_drawdown * 100).toFixed(2)}%`} />
+            <Stat label="Sharpe Ratio" value={result.sharpe_ratio.toFixed(2)} />
+            <Stat label="平均持有" value={`${result.avg_holding_days.toFixed(1)} 天`} />
+            <Stat label="交易成本佔獲利比" value={`${(result.tx_cost_ratio * 100).toFixed(2)}%`} />
           </div>
 
           <EquityChart result={result} />

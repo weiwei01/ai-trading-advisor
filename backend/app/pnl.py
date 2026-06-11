@@ -42,6 +42,7 @@ class Fill:
     price: float
     quantity: int
     sec_type: SecurityType = SecurityType.STOCK
+    date: str = ""
 
 
 @dataclass
@@ -49,6 +50,7 @@ class _Lot:
     quantity: int
     price: float
     buy_fee_per_share: float   # 該批買進手續費攤到每股
+    buy_date: str = ""
 
 
 @dataclass
@@ -60,6 +62,8 @@ class RealizedTrade:
     cost: float          # 含買進手續費
     proceeds: float      # 扣賣出手續費與證交稅後的淨收入
     pnl: float
+    buy_date: str = ""
+    sell_date: str = ""
 
 
 @dataclass
@@ -97,7 +101,7 @@ def compute_pnl(fills: List[Fill], market_prices: Dict[str, float]) -> PnLReport
         if f.side == "buy":
             fee = brokerage_fee(gross)
             lots[f.symbol].append(
-                _Lot(quantity=f.quantity, price=f.price, buy_fee_per_share=fee / f.quantity)
+                _Lot(quantity=f.quantity, price=f.price, buy_fee_per_share=fee / f.quantity, buy_date=f.date)
             )
         elif f.side == "sell":
             remaining = f.quantity
@@ -120,6 +124,8 @@ def compute_pnl(fills: List[Fill], market_prices: Dict[str, float]) -> PnLReport
                         cost=buy_cost,
                         proceeds=proceeds,
                         pnl=proceeds - buy_cost,
+                        buy_date=lot.buy_date,
+                        sell_date=f.date,
                     )
                 )
                 lot.quantity -= matched

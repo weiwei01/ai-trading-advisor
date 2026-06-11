@@ -73,6 +73,55 @@ def list_all(
     return repository.list_proposals(conn, decision)
 
 
+@router.get("/tracking", response_model=List[dict])
+def track_proposals(
+    conn=Depends(get_db),
+    source: QuoteSource = Depends(get_quote_source),
+) -> List[dict]:
+    """追蹤提案的事後表現（包含已同意與已婉拒的對照分析）。"""
+    from app.market import repository as market_repo
+    
+    props = repository.list_proposals(conn)
+    symbols = sorted({p.symbol for p in props})
+    current_quotes = source.get_quotes(symbols)
+    
+    # Fallback to last close from DB
+    for s in symbols:
+        if s not in current_quotes or current_quotes[s] <= 0:
+            s_candles = market_repo.load_candles(conn, s)
+            if s_candles:
+                current_quotes[s] = s_candles[-1]["close"]
+            else:
+                current_quotes[s] = 0.0
+
+    out = []
+    for p in props:
+        curr_price = current_quotes.get(p.symbol, 0.0)
+        hypo_return = 0.0
+        if p.price > 0 and curr_price > 0:
+            if p.action == "buy":
+                hypo_return = (curr_price - p.price) / p.price
+            elif p.action == "sell":
+                # 賣出提案：計算如果「未賣出」的價格變動（若跌，代表賣出決定是正確的，規避了損失）
+                hypo_return = (p.price - curr_price) / p.price
+
+        out.append({
+            "id": p.id,
+            "symbol": p.symbol,
+            "action": p.action.value,
+            "price": p.price,
+            "quantity": p.quantity,
+            "confidence": p.confidence,
+            "reason": p.reason,
+            "risk_note": p.risk_note,
+            "decision": p.decision.value,
+            "created_at": p.created_at,
+            "current_price": curr_price,
+            "hypothetical_return": hypo_return,
+        })
+    return out
+
+
 class DecisionRequest(BaseModel):
     decision: ProposalDecision
 

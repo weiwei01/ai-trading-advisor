@@ -1,4 +1,3 @@
-"""SQLite 存取層。實盤用固定檔案；回測用隔離的暫存資料庫。"""
 from __future__ import annotations
 
 import sqlite3
@@ -6,7 +5,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "app.db"
+from app import config
+
+DEFAULT_DB = Path(config.DB_PATH)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS proposals (
@@ -35,6 +36,14 @@ CREATE TABLE IF NOT EXISTS candles (
     PRIMARY KEY (symbol, date)
 );
 
+CREATE TABLE IF NOT EXISTS candle_fetch_failures (
+    symbol TEXT NOT NULL,
+    yyyymm TEXT NOT NULL,
+    error TEXT NOT NULL,
+    failed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (symbol, yyyymm)
+);
+
 CREATE TABLE IF NOT EXISTS fills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
@@ -45,7 +54,49 @@ CREATE TABLE IF NOT EXISTS fills (
     proposal_id INTEGER,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS security_metadata (
+    symbol TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    market_type TEXT NOT NULL,
+    sec_type TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS token_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model TEXT NOT NULL,
+    prompt_tokens INTEGER NOT NULL,
+    completion_tokens INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS backtest_cache (
+    context_hash TEXT PRIMARY KEY,
+    response_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
+
+# Initial standard symbols list to populate security_metadata
+INITIAL_SECURITIES = [
+    # TSE (上市) - Stocks
+    ("2330", "台積電", "tse", "stock"),
+    ("2317", "鴻海", "tse", "stock"),
+    ("2454", "聯發科", "tse", "stock"),
+    ("2308", "台達電", "tse", "stock"),
+    ("2382", "廣達", "tse", "stock"),
+    ("2881", "富邦金", "tse", "stock"),
+    ("2882", "國泰金", "tse", "stock"),
+    ("2603", "長榮", "tse", "stock"),
+    # OTC (上櫃) - Stocks
+    ("5483", "中美晶", "otc", "stock"),
+    ("6488", "環球晶", "otc", "stock"),
+    ("5347", "世界", "otc", "stock"),
+    # ETFs (TSE)
+    ("0050", "元大台灣50", "tse", "etf"),
+    ("0056", "元大高股息", "tse", "etf"),
+    ("00878", "國泰永續高股息", "tse", "etf"),
+]
 
 
 def get_connection(db_path: Path | str = DEFAULT_DB) -> sqlite3.Connection:
@@ -59,6 +110,12 @@ def get_connection(db_path: Path | str = DEFAULT_DB) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    # Populate default securities
+    conn.executemany(
+        """INSERT OR IGNORE INTO security_metadata (symbol, name, market_type, sec_type)
+           VALUES (?, ?, ?, ?)""",
+        INITIAL_SECURITIES,
+    )
     conn.commit()
 
 
@@ -71,3 +128,4 @@ def temp_db() -> Iterator[sqlite3.Connection]:
         yield conn
     finally:
         conn.close()
+

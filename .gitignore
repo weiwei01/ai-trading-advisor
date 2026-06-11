@@ -2,7 +2,8 @@
 backend/.venv/
 __pycache__/
 *.pyc
-backend/data/*.db
+# 本地資料庫與回測產物（不入版控）
+backend/data/
 
 # Node
 frontend/node_modules/

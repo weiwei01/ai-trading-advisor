@@ -5,9 +5,9 @@
 """
 from __future__ import annotations
 
-import os
 from typing import Iterator
 
+from app import config
 from app.advisor.base import TradingAdvisor
 from app.advisor.stub import StubAdvisor
 from app.db import get_connection
@@ -23,11 +23,11 @@ def get_db() -> Iterator:
 
 
 def get_advisor() -> TradingAdvisor:
-    if os.getenv("USE_CODEX") == "1":
+    if config.USE_CODEX:
         from app.advisor.codex import CodexAdvisor
 
         return CodexAdvisor()
-    if os.getenv("USE_RULES") == "1":
+    if config.USE_RULES:
         from app.advisor.rules import RuleBasedAdvisor
 
         return RuleBasedAdvisor()
@@ -35,7 +35,7 @@ def get_advisor() -> TradingAdvisor:
 
 
 def get_quote_source() -> QuoteSource:
-    if os.getenv("USE_SHIOAJI") == "1":
+    if config.USE_SHIOAJI:
         from app.market.shioaji import ShioajiQuoteSource
 
         return ShioajiQuoteSource()

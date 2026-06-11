@@ -1,4 +1,11 @@
-import type { BacktestResult, ProposalDecision, StoredProposal } from "./types";
+import type {
+  BacktestResult,
+  ProposalDecision,
+  StoredProposal,
+  FillRecord,
+  PnLResponse,
+  TrackedProposal,
+} from "./types";
 
 const BASE = "/api";
 
@@ -52,4 +59,30 @@ export function runStoredBacktest(payload: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   }).then((r) => json<BacktestResult>(r));
+}
+
+export function addManualFill(payload: {
+  symbol: string;
+  side: "buy" | "sell";
+  price: number;
+  quantity: number;
+  sec_type: "stock" | "etf";
+}): Promise<{ id: number; status: string }> {
+  return fetch(`${BASE}/portfolio/fills`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then((r) => json<{ id: number; status: string }>(r));
+}
+
+export function listFills(): Promise<FillRecord[]> {
+  return fetch(`${BASE}/portfolio/fills`).then((r) => json<FillRecord[]>(r));
+}
+
+export function getStoredPnL(): Promise<PnLResponse> {
+  return fetch(`${BASE}/portfolio/pnl`).then((r) => json<PnLResponse>(r));
+}
+
+export function listProposalsTracking(): Promise<TrackedProposal[]> {
+  return fetch(`${BASE}/proposals/tracking`).then((r) => json<TrackedProposal[]>(r));
 }

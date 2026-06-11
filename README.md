@@ -32,8 +32,10 @@ pytest -m smoke                     # 真正呼叫 Codex 的冒煙測試（需 O
 ### 抓真實日 K 並回測
 
 ```bash
-# 1) 從證交所抓最近 3 個月日 K，存入本地 SQLite（回測本身不需再連網）
+# 1) 從證交所抓日 K，存入本地 SQLite（回測本身不需再連網）
 python -m scripts.fetch_history 2330 0050 --months 3
+python -m scripts.fetch_history 2330 0050 --from 2023-01 --to 2025-12
+python -m scripts.fetch_history 2330 0050 --retry-failed
 
 # 2) 對已存資料跑回測。用規則型 advisor 可不燒 Token 就跑出有成交的結果，
 #    先驗證 決策→風控→損益 整條鏈路正確，再換 Codex。
@@ -62,6 +64,17 @@ cd frontend
 npm install
 npm run dev        # http://localhost:5173 ，/api 代理到後端 8000
 ```
+
+## 一鍵啟動前後端
+
+```bash
+./scripts/dev.sh
+
+# 可用環境變數指定埠號
+BACKEND_PORT=8001 FRONTEND_PORT=5174 ./scripts/dev.sh
+```
+
+未指定時預設為：後端 `1689`、前端 `1688`。可用環境變數覆蓋。
 
 ## 目錄
 
