@@ -62,7 +62,7 @@ USE_CODEX=1 OPENAI_API_KEY=sk-... python -m scripts.run_backtest 2330 --days 20
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:5173 ，/api 代理到後端 8000
+npm run dev        # http://localhost:1688 ，/api 代理到後端 1689
 ```
 
 ## 一鍵啟動前後端
@@ -75,6 +75,23 @@ BACKEND_PORT=8001 FRONTEND_PORT=5174 ./scripts/dev.sh
 ```
 
 未指定時預設為：後端 `1689`、前端 `1688`。可用環境變數覆蓋。
+
+## 持股與現金：從 Obsidian 讀取
+
+提案時的持股部位直接讀 Obsidian 持股總表（沿用 stock_dashboard 的格式），
+讓提案基於真實部位（例如已滿手的標的不會再被提買進）。
+
+- **總表位置**：`03-Investing/持股管理/總表/` 下最新的 `證券持股總表 YYYY-MM-DD.md`（依檔名挑最新）。
+  可用環境變數 `OBSIDIAN_VAULT_DIR` 覆寫資料夾路徑。
+- **持股來源**：解析「## 台新證券明細」「## 玉山證券明細」兩區塊的表格
+  （`代號 / 股票 / 現價 / 成本均價 / 庫存股數 …`），跨券商以代號彙總，已出清（股數 0）排除。
+- **可用現金**（自己填，擇一）：
+  - frontmatter：`available_cash: 500000`（或 `cash:`）
+  - 內文行：`可用現金：500,000`（同義詞：`可動用資金`、`現金餘額`；逗號/`$`/全半形冒號皆可）
+  - 優先 frontmatter，否則找內文行，都沒寫才退回 API 的 `initial_cash` 預設值。
+
+找不到總表檔案時，自動退回用本機成交紀錄（fills）推算持股，不會出錯。
+頁面「產生提案」成功訊息會顯示持股與現金的實際來源。
 
 ## 目錄
 
