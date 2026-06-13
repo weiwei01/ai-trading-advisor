@@ -25,6 +25,8 @@ export interface GenerateFromDbResult {
   as_of: string;
   advisor: string;
   n_proposed: number;
+  positions_source: string;
+  n_positions: number;
 }
 
 export function generateProposalsFromDb(payload: {

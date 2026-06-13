@@ -74,6 +74,7 @@ class GenerateFromDbRequest(BaseModel):
     strategy_style: str = "穩健中性"
     initial_cash: float = 1_000_000.0
     advisor: str = "rules"            # rules（不燒 Token）/ codex（真實 AI）/ stub
+    use_obsidian: bool = True         # 持股讀 Obsidian 總表；否則從成交紀錄推算
 
 
 def _build_advisor(name: str) -> TradingAdvisor:
@@ -91,6 +92,8 @@ class GenerateFromDbResponse(GenerateResponse):
     as_of: str
     advisor: str                      # 這次用哪個 advisor（stub/rules/codex）
     n_proposed: int                   # advisor 原始提案數（含被擋）
+    positions_source: str             # 持股來源：obsidian:<檔名> 或 fills
+    n_positions: int                  # 帶入的持股檔數
 
 
 @router.post("/generate-from-db", response_model=GenerateFromDbResponse)
@@ -116,13 +119,23 @@ def generate_from_db(
     else:
         as_of = max(c["date"] for cs in all_candles.values() for c in cs)
 
-    # 帳戶現況：從成交紀錄推算（list_fills 為新→舊，反轉成時間正序）
-    db_fills = list(reversed(repository.list_fills(conn)))
-    fills = [
-        Fill(f["symbol"], f["side"], f["price"], f["quantity"], SecurityType(f["sec_type"]))
-        for f in db_fills
-    ]
-    cash, positions = current_cash_and_positions(fills, req.initial_cash)
+    # 帳戶現況：持股優先讀 Obsidian 總表，現金用 initial_cash（總表不含可用現金）
+    positions_source = "fills"
+    if req.use_obsidian:
+        from app.market import obsidian
+        obs_positions, source_file = obsidian.load_positions()
+        if source_file is not None:
+            positions = obs_positions
+            cash = req.initial_cash
+            positions_source = f"obsidian:{source_file}"
+    if positions_source == "fills":
+        # 找不到 Obsidian 總表時，退回用成交紀錄推算
+        db_fills = list(reversed(repository.list_fills(conn)))
+        fills = [
+            Fill(f["symbol"], f["side"], f["price"], f["quantity"], SecurityType(f["sec_type"]))
+            for f in db_fills
+        ]
+        cash, positions = current_cash_and_positions(fills, req.initial_cash)
 
     # 只餵到 as_of 為止的 K（不洩漏未來）；報價用當日收盤
     candles_ctx = {s: [c for c in cs if c["date"] <= as_of] for s, cs in all_candles.items()}
@@ -160,6 +173,7 @@ def generate_from_db(
     return GenerateFromDbResponse(
         saved_ids=saved_ids, blocked=blocked, as_of=as_of,
         advisor=type(advisor).__name__, n_proposed=len(batch.proposals),
+        positions_source=positions_source, n_positions=len(positions),
     )
 
 

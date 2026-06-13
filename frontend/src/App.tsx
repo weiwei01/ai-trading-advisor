@@ -67,11 +67,14 @@ export default function App() {
         as_of: genDate || undefined,
       });
       const blocked = r.blocked.length;
+      const src = r.positions_source.startsWith("obsidian:")
+        ? `持股讀自 Obsidian（${r.n_positions} 檔）`
+        : `持股由成交紀錄推算（${r.n_positions} 檔）`;
       setSuccessMsg(
         `${r.advisor} 於 ${r.as_of} 產出 ${r.n_proposed} 筆，` +
-          `入庫 ${r.saved_ids.length} 筆${blocked ? `，風控擋下 ${blocked} 筆` : ""}`,
+          `入庫 ${r.saved_ids.length} 筆${blocked ? `，風控擋下 ${blocked} 筆` : ""}。${src}`,
       );
-      setTimeout(() => setSuccessMsg(null), 6000);
+      setTimeout(() => setSuccessMsg(null), 7000);
       refresh();
     } catch (e) {
       setError(String(e));
