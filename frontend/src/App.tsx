@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   decideProposal,
   listProposals,
+  generateProposalsFromDb,
   addManualFill,
   getStoredPnL,
   listFills,
@@ -29,6 +30,12 @@ export default function App() {
   const [fillSecType, setFillSecType] = useState<"stock" | "etf">("stock");
   const [submittingFill, setSubmittingFill] = useState(false);
 
+  // 產生提案表單
+  const [genAdvisor, setGenAdvisor] = useState<"rules" | "codex">("rules");
+  const [genStrategy, setGenStrategy] = useState("穩健波段");
+  const [genDate, setGenDate] = useState("");
+  const [generating, setGenerating] = useState(false);
+
   async function refresh() {
     try {
       setError(null);
@@ -49,6 +56,29 @@ export default function App() {
   useEffect(() => {
     refresh();
   }, [tab]);
+
+  async function generate() {
+    setGenerating(true);
+    setError(null);
+    try {
+      const r = await generateProposalsFromDb({
+        advisor: genAdvisor,
+        strategy_style: genStrategy,
+        as_of: genDate || undefined,
+      });
+      const blocked = r.blocked.length;
+      setSuccessMsg(
+        `${r.advisor} 於 ${r.as_of} 產出 ${r.n_proposed} 筆，` +
+          `入庫 ${r.saved_ids.length} 筆${blocked ? `，風控擋下 ${blocked} 筆` : ""}`,
+      );
+      setTimeout(() => setSuccessMsg(null), 6000);
+      refresh();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   async function decide(id: number, decision: "approved" | "rejected") {
     try {
@@ -141,6 +171,36 @@ export default function App() {
               <p style={sectionDescStyle}>
                 由 AI 顧問產出並已通過風控引擎驗證的進出場提案。系統不會自動下單，請手動確認。
               </p>
+
+              <div style={generateBarStyle}>
+                <strong style={{ fontSize: 14 }}>產生提案</strong>
+                <select
+                  value={genAdvisor}
+                  onChange={(e) => setGenAdvisor(e.target.value as "rules" | "codex")}
+                  style={genInputStyle}
+                >
+                  <option value="rules">規則型（不燒 Token）</option>
+                  <option value="codex">Codex 真實 AI（燒 Token）</option>
+                </select>
+                <input
+                  type="text"
+                  value={genStrategy}
+                  onChange={(e) => setGenStrategy(e.target.value)}
+                  placeholder="策略風格"
+                  style={{ ...genInputStyle, width: 120 }}
+                />
+                <input
+                  type="text"
+                  value={genDate}
+                  onChange={(e) => setGenDate(e.target.value)}
+                  placeholder="基準日 YYYY-MM-DD（留空=最新）"
+                  style={{ ...genInputStyle, width: 220 }}
+                />
+                <button onClick={generate} disabled={generating} style={approveButtonStyle}>
+                  {generating ? "產生中…" : "產生提案"}
+                </button>
+              </div>
+
               {proposals.length === 0 ? (
                 <div style={emptyStateStyle}>目前沒有待裁決的提案。</div>
               ) : (
@@ -651,6 +711,25 @@ const approveButtonStyle: React.CSSProperties = {
   backgroundColor: "#3b82f6",
   color: "white",
   boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+};
+
+const generateBarStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  flexWrap: "wrap",
+  padding: 12,
+  marginBottom: 16,
+  borderRadius: 8,
+  backgroundColor: "#f1f5f9",
+  border: "1px solid #e2e8f0",
+};
+
+const genInputStyle: React.CSSProperties = {
+  padding: "6px 10px",
+  borderRadius: 6,
+  border: "1px solid #cbd5e1",
+  fontSize: 13,
 };
 
 const rejectButtonStyle: React.CSSProperties = {

@@ -19,6 +19,26 @@ export function listProposals(decision?: ProposalDecision): Promise<StoredPropos
   return fetch(`${BASE}/proposals${q}`).then((r) => json<StoredProposal[]>(r));
 }
 
+export interface GenerateFromDbResult {
+  saved_ids: number[];
+  blocked: { symbol: string; reasons: string[] }[];
+  as_of: string;
+  advisor: string;
+  n_proposed: number;
+}
+
+export function generateProposalsFromDb(payload: {
+  advisor?: "rules" | "codex" | "stub";
+  strategy_style?: string;
+  as_of?: string;
+}): Promise<GenerateFromDbResult> {
+  return fetch(`${BASE}/proposals/generate-from-db`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then((r) => json<GenerateFromDbResult>(r));
+}
+
 export function decideProposal(
   id: number,
   decision: ProposalDecision,

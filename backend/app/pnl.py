@@ -160,3 +160,26 @@ def compute_pnl(fills: List[Fill], market_prices: Dict[str, float]) -> PnLReport
 
     report.unrealized_pnl = sum(p.unrealized_pnl for p in report.positions)
     return report
+
+
+def current_cash_and_positions(
+    fills: List[Fill], initial_cash: float = 1_000_000.0
+) -> tuple[float, Dict[str, int]]:
+    """從成交序列（時間正序）推算目前可用現金與持股，費用照扣。
+
+    供「產生提案」時帶入帳戶現況用。fills 須為舊→新順序。
+    """
+    cash = initial_cash
+    positions: Dict[str, int] = {}
+    for f in fills:
+        gross = f.price * f.quantity
+        fee = brokerage_fee(gross)
+        if f.side == "buy":
+            cash -= gross + fee
+            positions[f.symbol] = positions.get(f.symbol, 0) + f.quantity
+        elif f.side == "sell":
+            cash += gross - fee - transaction_tax(gross, f.sec_type)
+            positions[f.symbol] = positions.get(f.symbol, 0) - f.quantity
+            if positions[f.symbol] <= 0:
+                positions.pop(f.symbol, None)
+    return cash, positions
