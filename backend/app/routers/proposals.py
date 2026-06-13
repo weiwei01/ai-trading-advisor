@@ -94,6 +94,8 @@ class GenerateFromDbResponse(GenerateResponse):
     n_proposed: int                   # advisor 原始提案數（含被擋）
     positions_source: str             # 持股來源：obsidian:<檔名> 或 fills
     n_positions: int                  # 帶入的持股檔數
+    cash: float                       # 這次帶入的可用現金
+    cash_source: str                  # 現金來源：obsidian:... 或 initial_cash
 
 
 @router.post("/generate-from-db", response_model=GenerateFromDbResponse)
@@ -121,13 +123,20 @@ def generate_from_db(
 
     # 帳戶現況：持股優先讀 Obsidian 總表，現金用 initial_cash（總表不含可用現金）
     positions_source = "fills"
+    cash_source = "initial_cash"
     if req.use_obsidian:
         from app.market import obsidian
         obs_positions, source_file = obsidian.load_positions()
         if source_file is not None:
             positions = obs_positions
-            cash = req.initial_cash
             positions_source = f"obsidian:{source_file}"
+            # 可用現金也優先讀總表；沒寫才用 initial_cash
+            obs_cash, cash_src = obsidian.load_cash()
+            if obs_cash is not None:
+                cash = obs_cash
+                cash_source = f"obsidian:{cash_src}"
+            else:
+                cash = req.initial_cash
     if positions_source == "fills":
         # 找不到 Obsidian 總表時，退回用成交紀錄推算
         db_fills = list(reversed(repository.list_fills(conn)))
@@ -174,6 +183,7 @@ def generate_from_db(
         saved_ids=saved_ids, blocked=blocked, as_of=as_of,
         advisor=type(advisor).__name__, n_proposed=len(batch.proposals),
         positions_source=positions_source, n_positions=len(positions),
+        cash=cash, cash_source=cash_source,
     )
 
 

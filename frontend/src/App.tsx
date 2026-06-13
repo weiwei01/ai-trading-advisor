@@ -70,9 +70,12 @@ export default function App() {
       const src = r.positions_source.startsWith("obsidian:")
         ? `持股讀自 Obsidian（${r.n_positions} 檔）`
         : `持股由成交紀錄推算（${r.n_positions} 檔）`;
+      const cashSrc = r.cash_source.startsWith("obsidian:")
+        ? `可用現金讀自 Obsidian ${r.cash.toLocaleString()}`
+        : `可用現金 ${r.cash.toLocaleString()}（預設值）`;
       setSuccessMsg(
         `${r.advisor} 於 ${r.as_of} 產出 ${r.n_proposed} 筆，` +
-          `入庫 ${r.saved_ids.length} 筆${blocked ? `，風控擋下 ${blocked} 筆` : ""}。${src}`,
+          `入庫 ${r.saved_ids.length} 筆${blocked ? `，風控擋下 ${blocked} 筆` : ""}。${src}；${cashSrc}`,
       );
       setTimeout(() => setSuccessMsg(null), 7000);
       refresh();

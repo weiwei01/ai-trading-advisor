@@ -101,6 +101,42 @@ def load_holdings(directory: Optional[Path] = None) -> Tuple[List[Holding], Opti
     return holdings, path.name
 
 
+# 可用現金：frontmatter 鍵 + 內文同義詞
+_CASH_FM_KEYS = ("available_cash", "cash")
+_CASH_LINE_RE = re.compile(
+    r"(?:可用現金|可動用資金|現金餘額)\s*[:：]\s*\$?([\d,]+(?:\.\d+)?)"
+)
+
+
+def load_cash(directory: Optional[Path] = None) -> Tuple[Optional[float], Optional[str]]:
+    """讀取可用現金。優先 frontmatter available_cash/cash，否則找內文同義詞行。
+
+    回傳 (現金, 來源說明)；找不到回 (None, None)。
+    """
+    path = latest_holdings_file(directory)
+    if path is None:
+        return None, None
+    text = path.read_text(encoding="utf-8")
+
+    # 1) YAML frontmatter（檔頭 --- ... --- 之間）
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        front = text[3:end] if end != -1 else ""
+        for line in front.splitlines():
+            key, _, val = line.partition(":")
+            if key.strip() in _CASH_FM_KEYS:
+                num = _parse_num(val)
+                if num > 0:
+                    return num, f"{path.name} (frontmatter)"
+
+    # 2) 內文同義詞行
+    m = _CASH_LINE_RE.search(text)
+    if m:
+        return _parse_num(m.group(1)), f"{path.name} (內文)"
+
+    return None, None
+
+
 def load_positions(directory: Optional[Path] = None) -> Tuple[Dict[str, int], Optional[str]]:
     """跨券商彙總成 {代號: 總股數}，供 MarketContext.positions 使用。"""
     holdings, source = load_holdings(directory)

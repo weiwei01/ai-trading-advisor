@@ -67,3 +67,25 @@ def test_positions_summed_across_brokers(tmp_path):
 def test_missing_vault_returns_empty(tmp_path):
     holdings, source = obsidian.load_holdings(tmp_path / "不存在")
     assert holdings == [] and source is None
+
+
+def test_cash_from_frontmatter(tmp_path):
+    (tmp_path / "證券持股總表 2026-06-09.md").write_text(
+        '---\ntitle: x\navailable_cash: 500,000\n---\n## 台新證券明細\n', encoding="utf-8"
+    )
+    cash, src = obsidian.load_cash(tmp_path)
+    assert cash == 500000.0 and "frontmatter" in src
+
+
+def test_cash_from_body_synonyms(tmp_path):
+    (tmp_path / "證券持股總表 2026-06-09.md").write_text(
+        "# t\n可動用資金：1,234,567\n", encoding="utf-8"
+    )
+    cash, _ = obsidian.load_cash(tmp_path)
+    assert cash == 1234567.0
+
+
+def test_cash_missing_returns_none(tmp_path):
+    (tmp_path / "證券持股總表 2026-06-09.md").write_text("# t\n沒寫\n", encoding="utf-8")
+    cash, src = obsidian.load_cash(tmp_path)
+    assert cash is None and src is None
